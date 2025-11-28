@@ -42,9 +42,9 @@ show_header
 show_progress() {
     local i=0
     local sp='/-\|'
-    echo -ne "${GREEN}$1... ${NC}"
+    echo -n "$1... "
     while true; do
-        echo -ne "${RED}${sp:i++%${#sp}:1}${NC}\b"
+        printf "\b${sp:i++%${#sp}:1}"
         sleep 0.2
     done
 }
@@ -57,7 +57,7 @@ start_progress() {
 stop_progress() {
     kill $PROGRESS_PID 2>/dev/null
     wait $PROGRESS_PID 2>/dev/null
-    echo -e "${GREEN}Готово${NC}"
+    echo " Готово"
 }
 
 # Генерация случайных данных
@@ -485,19 +485,10 @@ EOF
 
 upload_proxy() {
     cd $WORKDIR
-    local PASS=$(random)
-    zip --password $PASS proxy.zip proxy.txt > /dev/null 2>&1
-    
-    response=$(curl -s -F "file=@proxy.zip" https://file.io)
-    URL=$(echo $response | jq -r '.link' 2>/dev/null)
-
     echo ""
     echo -e "${GREEN}##################################################${NC}"
-    if [ -n "$URL" ] && [ "$URL" != "null" ]; then
-        echo -e "${GREEN}# Ссылка на скачивание: ${URL}${NC}"
-        echo -e "${GREEN}# Пароль архива: ${PASS}${NC}"
-    fi
-    echo -e "${GREEN}# Локальный файл: ${WORKDIR}/proxy.txt${NC}"
+    echo -e "${GREEN}# Файл с прокси: ${WORKDIR}/proxy.txt${NC}"
+    echo -e "${GREEN}# Всегда ваш NPPRTEAM!${NC}"
     echo -e "${GREEN}##################################################${NC}"
 }
 
