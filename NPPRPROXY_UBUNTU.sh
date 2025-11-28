@@ -144,11 +144,12 @@ Description=3proxy Proxy Server
 After=network.target
 
 [Service]
-Type=simple
-ExecStart=/usr/local/etc/3proxy/bin/3proxy /usr/local/etc/3proxy/3proxy.cfg
-ExecReload=/bin/kill -HUP $MAINPID
-Restart=on-failure
+Type=forking
 LimitNOFILE=65535
+LimitNPROC=65535
+ExecStart=/usr/local/etc/3proxy/bin/3proxy /usr/local/etc/3proxy/3proxy.cfg
+Restart=on-failure
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
