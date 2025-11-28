@@ -494,16 +494,24 @@ install_dns_protection
 
 # Получаем IP адреса
 IP4=$(curl -4 -s icanhazip.com 2>/dev/null || curl -4 -s ifconfig.me 2>/dev/null)
-IP6=$(curl -6 -s icanhazip.com 2>/dev/null | cut -f1-4 -d':')
+
+# Получаем IPv6 из интерфейса (более надежно)
+IP6_FULL=$(ip -6 addr show scope global | grep -oP '(?<=inet6\s)[0-9a-f:]+(?=/)' | head -n1)
+if [ -z "$IP6_FULL" ]; then
+    IP6_FULL=$(curl -6 -s icanhazip.com 2>/dev/null)
+fi
+# Извлекаем первые 4 сегмента для префикса
+IP6=$(echo "$IP6_FULL" | sed 's/::.*//;s/:$//' | awk -F':' '{if(NF>=4) print $1":"$2":"$3":"$4; else print $0}')
 
 show_header
 echo "IPv4: ${IP4}"
+echo "IPv6 full: ${IP6_FULL}"
 echo "IPv6 prefix: ${IP6}"
 echo "Интерфейс: ${main_interface}"
 echo ""
 
 # Проверяем IPv6
-if [ -z "$IP6" ]; then
+if [ -z "$IP6" ] || [ "$IP6" = ":" ] || [ "$IP6" = "" ]; then
     echo "ВНИМАНИЕ: IPv6 не обнаружен!"
     echo "Для IPv6 прокси нужен сервер с IPv6 подсетью."
     echo "Продолжить только с IPv4? (y/n)"
