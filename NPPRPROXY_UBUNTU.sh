@@ -94,10 +94,9 @@ auto_detect_ipv6_info() {
 
 install_packages() {
     echo ""
-    log_step "Обновление системы"
+    log_step "Обновление списка пакетов"
     apt-get update -y > /dev/null 2>&1
-    DEBIAN_FRONTEND=noninteractive apt-get upgrade -y > /dev/null 2>&1
-    log_done "Обновление системы"
+    log_done "Обновление списка пакетов"
 
     log_step "Установка необходимых пакетов"
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
@@ -396,33 +395,43 @@ gen_data_multiuser() {
 
 # Конфигурация 3proxy (анонимная)
 gen_3proxy() {
-    cat <<EOF
-# 3proxy ANONYMOUS configuration
-daemon
-maxconn 10000
-nserver 127.0.0.1
-nserver ::1
-nscache 65536
-timeouts 1 5 30 60 180 1800 15 60
-
-# Отключаем логи для анонимности
-log /dev/null
-logformat ""
-
-users $(awk -F "/" 'BEGIN{ORS="";} {print $1 ":CL:" $2 " "}' ${WORKDATA})
-
-# HTTP proxy
-$(awk -F "/" '{print "auth strong\n" \
-"allow " $1 "\n" \
-"proxy -64 -n -a -p" $4 " -i" $3 " -e" $5 "\n" \
-"flush\n"}' ${WORKDATA})
-
-# SOCKS5 proxy
-$(awk -F "/" '{print "auth strong\n" \
-"allow " $1 "\n" \
-"socks -64 -n -a -p" $4+20000 " -i" $3 " -e" $5 "\n" \
-"flush\n"}' ${WORKDATA})
-EOF
+    # Заголовок конфига
+    echo "# 3proxy ANONYMOUS configuration"
+    echo "daemon"
+    echo "maxconn 10000"
+    echo "nserver 127.0.0.1"
+    echo "nscache 65536"
+    echo "timeouts 1 5 30 60 180 1800 15 60"
+    echo ""
+    echo "# Отключаем логи для анонимности"
+    echo "log /dev/null"
+    echo ""
+    
+    # Пользователи
+    echo -n "users "
+    awk -F "/" '!seen[$1]++ {printf "%s:CL:%s ", $1, $2}' ${WORKDATA}
+    echo ""
+    echo ""
+    
+    # HTTP proxy
+    echo "# HTTP proxy"
+    awk -F "/" '{
+        print "auth strong"
+        print "allow " $1
+        print "proxy -64 -n -a -p" $4 " -i" $3 " -e" $5
+        print "flush"
+        print ""
+    }' ${WORKDATA}
+    
+    # SOCKS5 proxy
+    echo "# SOCKS5 proxy"
+    awk -F "/" '{
+        print "auth strong"
+        print "allow " $1
+        print "socks -64 -n -a -p" $4+20000 " -i" $3 " -e" $5
+        print "flush"
+        print ""
+    }' ${WORKDATA}
 }
 
 gen_iptables() {
@@ -441,20 +450,22 @@ EOF
 }
 
 gen_proxy_file() {
-    cat > proxy.txt <<EOF
-===========================================================================
-ANONYMOUS IPv6 PROXY - NPPRTEAM (Ubuntu Version)
-===========================================================================
-Telegram — https://t.me/nppr_team
-Antik Browser — https://antik-browser.com/
-===========================================================================
-HTTP прокси (формат IP:PORT:USER:PASSWORD):
-$(awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2 }' ${WORKDATA})
-
-SOCKS5 прокси (порт +20000):
-$(awk -F "/" '{print $3 ":" $4+20000 ":" $1 ":" $2 }' ${WORKDATA})
-===========================================================================
-EOF
+    {
+        echo "==========================================================================="
+        echo "ANONYMOUS IPv6 PROXY - NPPRTEAM (Ubuntu Version)"
+        echo "==========================================================================="
+        echo "Telegram - https://t.me/nppr_team"
+        echo "Antik Browser - https://antik-browser.com/"
+        echo "==========================================================================="
+        echo ""
+        echo "HTTP прокси (формат IP:PORT:USER:PASSWORD):"
+        awk -F "/" '{print $3 ":" $4 ":" $1 ":" $2}' ${WORKDATA}
+        echo ""
+        echo "SOCKS5 прокси (порт +20000):"
+        awk -F "/" '{print $3 ":" $4+20000 ":" $1 ":" $2}' ${WORKDATA}
+        echo ""
+        echo "==========================================================================="
+    } > ${WORKDIR}/proxy.txt
 }
 
 upload_proxy() {
@@ -610,8 +621,16 @@ chmod +x /etc/rc.local
 log_step "Запуск прокси сервера"
 bash ${WORKDIR}/boot_iptables.sh > /dev/null 2>&1
 bash ${WORKDIR}/boot_ifconfig.sh > /dev/null 2>&1
-systemctl start 3proxy > /dev/null 2>&1
-log_done "Прокси сервер запущен"
+systemctl enable 3proxy > /dev/null 2>&1
+systemctl restart 3proxy > /dev/null 2>&1
+sleep 2
+
+# Проверяем статус
+if systemctl is-active --quiet 3proxy; then
+    log_done "Прокси сервер запущен"
+else
+    echo "[!] ОШИБКА: 3proxy не запустился. Проверьте: journalctl -u 3proxy"
+fi
 
 # Генерируем файл с прокси
 gen_proxy_file
