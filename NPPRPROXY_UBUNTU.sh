@@ -5,59 +5,33 @@
 # Основан на NPPRPROXY от NPPRTEAM
 # =====================================================
 
-# ANSI цвета
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
 # Проверка root
 if [[ $EUID -ne 0 ]]; then
-   echo -e "${RED}Этот скрипт должен быть запущен от root${NC}"
+   echo "Этот скрипт должен быть запущен от root"
    echo "Используйте: sudo ./NPPRPROXY_UBUNTU.sh"
    exit 1
 fi
 
 show_header() {
     clear
-    echo -e "${RED}"
-    echo "███╗   ██╗██████╗ ██████╗ ██████╗ ████████╗███████╗ █████╗ ███╗   ███╗"
-    echo "████╗  ██║██╔══██╗██╔══██╗██╔══██╗╚══██╔══╝██╔════╝██╔══██╗████╗ ████║"
-    echo "██╔██╗ ██║██████╔╝██████╔╝██████╔╝   ██║   █████╗  ███████║██╔████╔██║"
-    echo "██║╚██╗██║██╔═══╝ ██╔═══╝ ██╔══██╗   ██║   ██╔══╝  ██╔══██║██║╚██╔╝██║"
-    echo "██║ ╚████║██║     ██║     ██║  ██║   ██║   ███████╗██║  ██║██║ ╚═╝ ██║"
-    echo "╚═╝  ╚═══╝╚═╝     ╚═╝     ╚═╝  ╚═╝   ╚═╝   ╚══════╝╚═╝  ╚═╝╚═╝     ╚═╝"
-    echo -e "${NC}"
-    echo -e "${YELLOW}[UBUNTU/DEBIAN VERSION] - Максимальная анонимность${NC}"
-    echo -e "${GREEN}------------------------------------------------"
+    echo "========================================================================"
+    echo "  NPPRTEAM - ANONYMOUS IPv6 PROXY INSTALLER (UBUNTU/DEBIAN)"
+    echo "========================================================================"
     echo "Контакты NPPRTEAM:"
-    echo "Telegram — https://t.me/nppr_team"
-    echo "VK — https://vk.com/npprteam"
-    echo "Antik Browser — https://antik-browser.com/"
-    echo -e "------------------------------------------------${NC}"
+    echo "Telegram - https://t.me/nppr_team"
+    echo "VK - https://vk.com/npprteam"
+    echo "Antik Browser - https://antik-browser.com/"
+    echo "========================================================================"
 }
 
 show_header
 
-show_progress() {
-    local i=0
-    local sp='/-\|'
-    echo -n "$1... "
-    while true; do
-        printf "\b${sp:i++%${#sp}:1}"
-        sleep 0.2
-    done
+log_step() {
+    echo "[*] $1"
 }
 
-start_progress() {
-    show_progress "$1" &
-    PROGRESS_PID=$!
-}
-
-stop_progress() {
-    kill $PROGRESS_PID 2>/dev/null
-    wait $PROGRESS_PID 2>/dev/null
-    echo " Готово"
+log_done() {
+    echo "[+] $1 - Готово"
 }
 
 # Генерация случайных данных
@@ -120,12 +94,12 @@ auto_detect_ipv6_info() {
 
 install_packages() {
     echo ""
-    start_progress "Обновление системы"
+    log_step "Обновление системы"
     apt-get update -y > /dev/null 2>&1
     DEBIAN_FRONTEND=noninteractive apt-get upgrade -y > /dev/null 2>&1
-    stop_progress
+    log_done "Обновление системы"
 
-    start_progress "Установка необходимых пакетов"
+    log_step "Установка необходимых пакетов"
     DEBIAN_FRONTEND=noninteractive apt-get install -y \
         gcc \
         g++ \
@@ -142,7 +116,7 @@ install_packages() {
         iptables \
         libarchive-tools \
         > /dev/null 2>&1
-    stop_progress
+    log_done "Установка пакетов"
 }
 
 # =====================================================
@@ -150,7 +124,7 @@ install_packages() {
 # =====================================================
 
 install_3proxy() {
-    start_progress "Установка 3proxy"
+    log_step "Установка 3proxy"
     
     mkdir -p /3proxy
     cd /3proxy
@@ -184,7 +158,7 @@ EOF
     systemctl daemon-reload
     
     cd $WORKDIR
-    stop_progress
+    log_done "3proxy установлен"
 }
 
 # =====================================================
@@ -192,7 +166,7 @@ EOF
 # =====================================================
 
 setup_anonymity() {
-    start_progress "Применение настроек анонимности"
+    log_step "Применение настроек анонимности"
     
     # Удаляем старые настройки если есть
     sed -i '/# ANON PROXY START/,/# ANON PROXY END/d' /etc/sysctl.conf
@@ -259,13 +233,13 @@ root soft nofile 999999
 root hard nofile 999999
 EOF
 
-    stop_progress
+    log_done "Настройки анонимности"
 }
 
 # TCP Fingerprint
 set_tcp_fingerprint() {
     local os=$1
-    start_progress "Применение TCP fingerprint для $os"
+    log_step "Применение TCP fingerprint для $os"
     
     case "$os" in
         "Windows")
@@ -305,7 +279,7 @@ set_tcp_fingerprint() {
             ;;
     esac
     
-    stop_progress
+    log_done "TCP fingerprint"
 }
 
 # =====================================================
@@ -313,7 +287,7 @@ set_tcp_fingerprint() {
 # =====================================================
 
 install_dns_protection() {
-    start_progress "Установка DNS-over-HTTPS защиты"
+    log_step "Установка DNS-over-HTTPS защиты"
     
     cd /tmp
     wget -q https://github.com/DNSCrypt/dnscrypt-proxy/releases/download/2.1.5/dnscrypt-proxy-linux_x86_64-2.1.5.tar.gz
@@ -377,7 +351,7 @@ EOF
         chattr +i /etc/resolv.conf 2>/dev/null
     fi
     
-    stop_progress
+    log_done "DNS защита"
 }
 
 # =====================================================
@@ -385,7 +359,7 @@ EOF
 # =====================================================
 
 setup_firewall() {
-    start_progress "Настройка firewall"
+    log_step "Настройка firewall"
     
     # Отключаем UFW если есть, используем iptables напрямую
     ufw disable > /dev/null 2>&1
@@ -393,7 +367,7 @@ setup_firewall() {
     # Сохраняем правила iptables
     iptables-save > /etc/iptables.rules 2>/dev/null
     
-    stop_progress
+    log_done "Firewall"
 }
 
 # =====================================================
@@ -486,10 +460,10 @@ EOF
 upload_proxy() {
     cd $WORKDIR
     echo ""
-    echo -e "${GREEN}##################################################${NC}"
-    echo -e "${GREEN}# Файл с прокси: ${WORKDIR}/proxy.txt${NC}"
-    echo -e "${GREEN}# Всегда ваш NPPRTEAM!${NC}"
-    echo -e "${GREEN}##################################################${NC}"
+    echo "##################################################"
+    echo "# Файл с прокси: ${WORKDIR}/proxy.txt"
+    echo "# Всегда ваш NPPRTEAM!"
+    echo "##################################################"
 }
 
 # =====================================================
@@ -497,7 +471,7 @@ upload_proxy() {
 # =====================================================
 
 echo ""
-echo -e "${GREEN}Запуск установки анонимных IPv6 прокси...${NC}"
+echo "Запуск установки анонимных IPv6 прокси..."
 echo ""
 
 # Установка пакетов
@@ -523,14 +497,14 @@ IP4=$(curl -4 -s icanhazip.com 2>/dev/null || curl -4 -s ifconfig.me 2>/dev/null
 IP6=$(curl -6 -s icanhazip.com 2>/dev/null | cut -f1-4 -d':')
 
 show_header
-echo -e "IPv4: ${GREEN}${IP4}${NC}"
-echo -e "IPv6 prefix: ${GREEN}${IP6}${NC}"
-echo -e "Интерфейс: ${GREEN}${main_interface}${NC}"
+echo "IPv4: ${IP4}"
+echo "IPv6 prefix: ${IP6}"
+echo "Интерфейс: ${main_interface}"
 echo ""
 
 # Проверяем IPv6
 if [ -z "$IP6" ]; then
-    echo -e "${RED}ВНИМАНИЕ: IPv6 не обнаружен!${NC}"
+    echo "ВНИМАНИЕ: IPv6 не обнаружен!"
     echo "Для IPv6 прокси нужен сервер с IPv6 подсетью."
     echo "Продолжить только с IPv4? (y/n)"
     read -r continue_ipv4
@@ -541,7 +515,7 @@ if [ -z "$IP6" ]; then
 fi
 
 # Количество прокси
-echo -e "${YELLOW}Сколько прокси создать? (например: 100)${NC}"
+echo "Сколько прокси создать? (например: 100)"
 read COUNT
 if ! [[ "$COUNT" =~ ^[0-9]+$ ]]; then
     COUNT=100
@@ -552,11 +526,11 @@ echo "Создаём $COUNT прокси"
 RANDOM_OFFSET=$((RANDOM % 5000))
 FIRST_PORT=$((10000 + RANDOM_OFFSET))
 LAST_PORT=$(($FIRST_PORT + $COUNT - 1))
-echo -e "Порты: ${GREEN}${FIRST_PORT}-${LAST_PORT}${NC} (HTTP) и ${GREEN}$((FIRST_PORT+20000))-$((LAST_PORT+20000))${NC} (SOCKS5)"
+echo "Порты: ${FIRST_PORT}-${LAST_PORT} (HTTP) и $((FIRST_PORT+20000))-$((LAST_PORT+20000)) (SOCKS5)"
 
 # TCP Fingerprint
 echo ""
-echo -e "${YELLOW}Выберите TCP/IP отпечаток:${NC}"
+echo "Выберите TCP/IP отпечаток:"
 echo "1 - Windows"
 echo "2 - MacOS"
 echo "3 - Linux"
@@ -576,7 +550,7 @@ set_tcp_fingerprint "$os"
 
 # Тип прокси
 echo ""
-echo -e "${YELLOW}Тип прокси:${NC}"
+echo "Тип прокси:"
 echo "1 - Статические (каждый порт = свой IPv6)"
 echo "2 - Ротация (один порт, IPv6 меняется)"
 read TYPE
@@ -586,7 +560,7 @@ fi
 
 # Логин/пароль
 echo ""
-echo -e "${YELLOW}Авторизация:${NC}"
+echo "Авторизация:"
 echo "1 - Один логин/пароль для всех"
 echo "2 - Разные для каждого прокси"
 read NUSER
@@ -594,21 +568,21 @@ read NUSER
 USERNAME=$(random)
 PASSWORD=$(random)
 
-start_progress "Генерация данных прокси"
+log_step "Генерация данных прокси"
 if [[ $NUSER -eq 1 ]]; then
     gen_data > $WORKDATA
 else
     gen_data_multiuser > $WORKDATA
 fi
-stop_progress
+log_done "Данные прокси"
 
 # Генерируем конфиги
-start_progress "Создание конфигурации"
+log_step "Создание конфигурации"
 gen_iptables > $WORKDIR/boot_iptables.sh
 gen_ifconfig > $WORKDIR/boot_ifconfig.sh
 chmod +x $WORKDIR/boot_*.sh
 gen_3proxy > /usr/local/etc/3proxy/3proxy.cfg
-stop_progress
+log_done "Конфигурация"
 
 # Настройка firewall
 setup_firewall
@@ -625,11 +599,11 @@ EOF
 chmod +x /etc/rc.local
 
 # Запускаем
-start_progress "Запуск прокси сервера"
+log_step "Запуск прокси сервера"
 bash ${WORKDIR}/boot_iptables.sh > /dev/null 2>&1
 bash ${WORKDIR}/boot_ifconfig.sh > /dev/null 2>&1
 systemctl start 3proxy > /dev/null 2>&1
-stop_progress
+log_done "Прокси сервер запущен"
 
 # Генерируем файл с прокси
 gen_proxy_file
@@ -638,18 +612,18 @@ gen_proxy_file
 upload_proxy
 
 echo ""
-echo -e "${GREEN}============================================${NC}"
-echo -e "${GREEN}УСТАНОВКА ЗАВЕРШЕНА!${NC}"
-echo -e "${GREEN}============================================${NC}"
-echo -e "${YELLOW}Настройки анонимности:${NC}"
-echo "• TCP fingerprint: $os"
-echo "• DNS-over-HTTPS: включен"
-echo "• Логи 3proxy: отключены"
-echo "• IPv6 Privacy Extensions: включены"
-echo "• ICMP (ping): отключен"
+echo "============================================"
+echo "УСТАНОВКА ЗАВЕРШЕНА!"
+echo "============================================"
+echo "Настройки анонимности:"
+echo "  - TCP fingerprint: $os"
+echo "  - DNS-over-HTTPS: включен"
+echo "  - Логи 3proxy: отключены"
+echo "  - IPv6 Privacy Extensions: включены"
+echo "  - ICMP (ping): отключен"
 echo ""
-echo -e "${YELLOW}Управление:${NC}"
-echo "• Статус: systemctl status 3proxy"
-echo "• Рестарт: systemctl restart 3proxy"
-echo "• Логи: journalctl -u 3proxy"
-echo -e "${GREEN}============================================${NC}"
+echo "Управление:"
+echo "  - Статус: systemctl status 3proxy"
+echo "  - Рестарт: systemctl restart 3proxy"
+echo "  - Логи: journalctl -u 3proxy"
+echo "============================================"
